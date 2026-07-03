@@ -1,25 +1,17 @@
 // 五子棋前端逻辑
 
-// ==================== 配置常量 ====================
-const BOARD_SIZE = 15;
-const CANVAS_SIZE = 600;
-const PADDING = 30;
-const GRID_SIZE = (CANVAS_SIZE - PADDING * 2) / (BOARD_SIZE - 1);
-const STONE_RADIUS = GRID_SIZE * 0.4;
-
-const COLOR_NAMES = {
-  0: '未确定',
-  1: '黑方',
-  2: '白方',
-};
-
-const STATUS_NAMES = {
-  waiting: '等待玩家',
-  playing: '对局进行中',
-  blackWin: '黑方获胜',
-  whiteWin: '白方获胜',
-  draw: '平局',
-};
+import {
+  BOARD_SIZE,
+  CANVAS_SIZE,
+  PADDING,
+  GRID_SIZE,
+  STONE_RADIUS,
+  COLOR_NAMES,
+  STATUS_NAMES,
+  createEmptyBoard,
+  isGameEnded,
+  getGridCoord,
+} from './game-logic.js';
 
 // ==================== DOM 元素 ====================
 const connectionStatusEl = document.getElementById('connectionStatus');
@@ -54,14 +46,9 @@ const state = {
   status: 'waiting',
   board: createEmptyBoard(),
   notifications: [],
-  gameEnded: false,
 };
 
 // ==================== 工具函数 ====================
-function createEmptyBoard() {
-  return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
-}
-
 function send(type, payload = {}) {
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
     notify('当前未连接到服务端，请刷新页面重试', 'system-error');
@@ -199,25 +186,6 @@ function renderStatus() {
   }
 }
 
-// ==================== 坐标转换 ====================
-function getGridCoord(event) {
-  const rect = boardCanvas.getBoundingClientRect();
-  const dprX = boardCanvas.width / rect.width;
-  const dprY = boardCanvas.height / rect.height;
-
-  const x = (event.clientX - rect.left) * dprX - PADDING;
-  const y = (event.clientY - rect.top) * dprY - PADDING;
-
-  const gridX = Math.round(x / GRID_SIZE);
-  const gridY = Math.round(y / GRID_SIZE);
-
-  if (gridX < 0 || gridX >= BOARD_SIZE || gridY < 0 || gridY >= BOARD_SIZE) {
-    return null;
-  }
-
-  return { x: gridX, y: gridY };
-}
-
 // ==================== 事件处理 ====================
 function handleBoardClick(event) {
   if (!state.joined) {
@@ -233,7 +201,8 @@ function handleBoardClick(event) {
     return;
   }
 
-  const coord = getGridCoord(event);
+  const rect = boardCanvas.getBoundingClientRect();
+  const coord = getGridCoord(event.clientX, event.clientY, rect, boardCanvas.width, boardCanvas.height);
   if (!coord) return;
 
   if (state.board[coord.y][coord.x] !== 0) {
@@ -281,10 +250,6 @@ function handleMove(payload) {
 function handleSystem(payload) {
   const { code, message } = payload;
   notify(message, code);
-}
-
-function isGameEnded(status) {
-  return status === 'blackWin' || status === 'whiteWin' || status === 'draw';
 }
 
 function showResult(status) {
