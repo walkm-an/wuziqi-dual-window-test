@@ -9,9 +9,52 @@
 <body>
   <div id="app">
     <h1>五子棋</h1>
-    <div id="status">等待加入房间...</div>
-    <div id="board"></div>
+
+    <div id="connectionStatus" class="connection-status">连接中...</div>
+
+    <section id="loginSection" class="login-section">
+      <div class="form-row">
+        <label for="roomId">房间号</label>
+        <input id="roomId" type="text" placeholder="例如：room-001" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="username">昵称</label>
+        <input id="username" type="text" placeholder="请输入昵称" autocomplete="off">
+      </div>
+      <button id="joinBtn" class="btn btn-primary">加入房间</button>
+    </section>
+
+    <section id="gameSection" class="game-section hidden">
+      <div class="status-bar">
+        <span id="myColor">己方颜色：-</span>
+        <span id="currentTurn">当前回合：-</span>
+        <span id="gameStatus">对局状态：-</span>
+      </div>
+
+      <div class="board-wrap">
+        <canvas id="boardCanvas" width="600" height="600"></canvas>
+        <div id="turnOverlay" class="turn-overlay hidden">轮到对手</div>
+      </div>
+
+      <div class="actions">
+        <button id="resignBtn" class="btn btn-danger">认输</button>
+      </div>
+
+      <div class="notifications">
+        <h3>系统通知</h3>
+        <ul id="notificationList"></ul>
+      </div>
+    </section>
   </div>
+
+  <div id="resultModal" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="resultTitle">对局结束</h2>
+      <p id="resultMessage">-</p>
+      <button id="closeResultBtn" class="btn btn-primary">关闭</button>
+    </div>
+  </div>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>
