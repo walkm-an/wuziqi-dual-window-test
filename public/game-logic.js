@@ -64,6 +64,22 @@ export function getGridCoord(clientX, clientY, rect, canvasWidth, canvasHeight) 
 }
 
 /**
+ * 校验棋盘数据结构是否合法
+ * @param {unknown} board
+ * @returns {boolean}
+ */
+export function validateBoard(board) {
+  if (!Array.isArray(board) || board.length !== BOARD_SIZE) return false;
+  for (const row of board) {
+    if (!Array.isArray(row) || row.length !== BOARD_SIZE) return false;
+    for (const cell of row) {
+      if (cell !== 0 && cell !== 1 && cell !== 2) return false;
+    }
+  }
+  return true;
+}
+
+/**
  * 获取颜色显示文本
  * @param {number} color
  * @returns {string}

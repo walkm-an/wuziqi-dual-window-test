@@ -72,6 +72,7 @@ export function joinRoom(ws, roomId, username) {
 
   const existingIndex = room.players.findIndex((p) => p && p.ws === ws);
   if (existingIndex !== -1) {
+    room.players[existingIndex].username = username;
     socketRoom.set(ws, roomId);
     return { room, player: room.players[existingIndex], isNewRoom, alreadyInRoom: true };
   }

@@ -9,6 +9,7 @@ import {
   COLOR_NAMES,
   STATUS_NAMES,
   createEmptyBoard,
+  validateBoard,
   isGameEnded,
   getGridCoord,
 } from './game-logic.js';
@@ -57,10 +58,24 @@ function send(type, payload = {}) {
   state.ws.send(JSON.stringify({ type, payload }));
 }
 
+const ERROR_CODES = new Set([
+  'system-error',
+  'INVALID_JOIN_PAYLOAD',
+  'ROOM_FULL',
+  'NOT_JOINED',
+  'NOT_PLAYING',
+  'NOT_YOUR_TURN',
+  'INVALID_COORDINATES',
+  'OUT_OF_BOUNDS',
+  'CELL_OCCUPIED',
+  'UNKNOWN_MESSAGE_TYPE',
+  'INVALID_JSON',
+]);
+
 function notify(message, code = '') {
   const item = document.createElement('li');
   item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-  if (code === 'system-error' || code.startsWith('ERROR')) {
+  if (ERROR_CODES.has(code)) {
     item.classList.add('system-error');
   }
   notificationList.appendChild(item);
@@ -218,9 +233,7 @@ function handleGameState(payload) {
   state.myColor = payload.myColor || 0;
   state.currentTurn = payload.currentTurn || 1;
   state.status = payload.status || 'waiting';
-  state.board = payload.board && payload.board.length === BOARD_SIZE
-    ? payload.board
-    : createEmptyBoard();
+  state.board = validateBoard(payload.board) ? payload.board : createEmptyBoard();
 
   if (state.myColor !== 0) {
     state.joined = true;
@@ -283,7 +296,8 @@ function connect() {
   }
 
   setConnectionStatus('连接中...', '');
-  state.ws = new WebSocket(`ws://${location.host}`);
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  state.ws = new WebSocket(`${scheme}://${location.host}`);
 
   state.ws.addEventListener('open', () => {
     state.connected = true;

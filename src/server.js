@@ -1,11 +1,12 @@
 import { createServer } from 'http';
 import { readFile } from 'fs/promises';
-import { extname, join } from 'path';
+import { extname, join, normalize } from 'path';
 import { WebSocketServer } from 'ws';
 import { validateMove, placeStone, checkWin, checkDraw } from './game.js';
 import {
   send,
   sendSystem,
+  buildGameState,
   broadcastGameState,
   broadcastMove,
   broadcastSystem,
@@ -29,7 +30,13 @@ const server = createServer(async (req, res) => {
   let pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
   if (pathname === '/') pathname = '/index.html';
 
-  const filePath = join(PUBLIC_DIR, pathname);
+  const filePath = normalize(join(PUBLIC_DIR, pathname));
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Forbidden');
+    return;
+  }
+
   const ext = extname(filePath);
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
@@ -77,7 +84,7 @@ function handleJoin(ws, payload) {
   const { room, player, alreadyInRoom } = result;
 
   if (alreadyInRoom) {
-    send(ws, 'gameState', buildGameStatePayload(room, player.color));
+    send(ws, 'gameState', buildGameState(room, player.color).payload);
     return;
   }
 
@@ -89,19 +96,6 @@ function handleJoin(ws, payload) {
   }
 
   broadcastGameState(room);
-}
-
-function buildGameStatePayload(room, myColor) {
-  return {
-    roomId: room.roomId,
-    players: room.players
-      .filter(Boolean)
-      .map((p) => ({ username: p.username, color: p.color })),
-    myColor,
-    currentTurn: room.currentTurn,
-    board: room.board.map((row) => [...row]),
-    status: room.status,
-  };
 }
 
 function handleMove(ws, payload) {
@@ -170,19 +164,24 @@ function handleClose(ws) {
   const roomId = socketRoom.get(ws);
   if (!roomId) return;
 
-  const room = leaveRoom(ws, roomId);
-  if (!room) return;
+  const room = getRoom(roomId);
+  const previousStatus = room ? room.status : null;
 
-  const remaining = room.players.find((p) => p);
+  const updatedRoom = leaveRoom(ws, roomId);
+  if (!updatedRoom) return;
+
+  const remaining = updatedRoom.players.find((p) => p);
   if (!remaining) return;
 
-  if (room.status === 'blackWin' || room.status === 'whiteWin') {
-    broadcastSystem(room, 'OPPONENT_DISCONNECTED', '对方已断开连接，您获胜了');
+  if (previousStatus === 'playing' && (updatedRoom.status === 'blackWin' || updatedRoom.status === 'whiteWin')) {
+    broadcastSystem(updatedRoom, 'OPPONENT_DISCONNECTED', '对方已断开连接，您获胜了');
+  } else if (updatedRoom.status === 'waiting') {
+    broadcastSystem(updatedRoom, 'GAME_RESET', '对方离开，等待新玩家加入');
   } else {
-    broadcastSystem(room, 'GAME_RESET', '对方离开，等待新玩家加入');
+    broadcastSystem(updatedRoom, 'OPPONENT_LEFT', '对方已离开');
   }
 
-  broadcastGameState(room);
+  broadcastGameState(updatedRoom);
 }
 
 wss.on('connection', (ws) => {

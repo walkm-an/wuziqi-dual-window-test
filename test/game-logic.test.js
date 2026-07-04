@@ -13,7 +13,7 @@ import {
   getGridCoord,
   getColorName,
   getStatusName,
-} from '../game-logic.js';
+} from '../public/game-logic.js';
 
 describe('game-logic constants', () => {
   it('BOARD_SIZE should be 15', () => {

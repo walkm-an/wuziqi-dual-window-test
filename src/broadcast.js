@@ -2,7 +2,11 @@ import { deepCloneBoard } from './game.js';
 
 export function send(ws, type, payload) {
   if (ws && ws.readyState === 1 /* WebSocket.OPEN */) {
-    ws.send(JSON.stringify({ type, payload }));
+    try {
+      ws.send(JSON.stringify({ type, payload }));
+    } catch {
+      // 连接可能刚关闭，忽略发送失败
+    }
   }
 }
 
